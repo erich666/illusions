@@ -30,7 +30,7 @@
 	</head>
 	<body>
 
-		<div id="info">Editable illusion based on <a href="http://bigblueboo.tumblr.com/post/81390584151/fooled-ya-brain" target="_blank" rel="noopener">"fooled ya brain" by Charlie Deck, BIGBLUEBOO</a>.<br><a href="https://github.com/erich666/illusions">Code</a>.</div>
+		<div id="info">Editable illusion based on <a href="http://bigblueboo.tumblr.com/post/81390584151/fooled-ya-brain" target="_blank" rel="noopener">"fooled ya brain" by Charlie Deck, BIGBLUEBOO</a>.<br>Mouse or touch to orbit and zoom. <a href="https://github.com/erich666/illusions">Code</a>.</div>
 		</div>
 
 		<script src="js/three.min.js"></script>
@@ -79,6 +79,7 @@
 				document.body.appendChild( renderer.domElement );
 
 				controls = new THREE.TrackballControls( camera, renderer.domElement );
+				controls.rotateSpeed = 2.0;
 				
 				addGui();
 
