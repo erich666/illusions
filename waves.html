@@ -141,7 +141,7 @@
 				gui.add( params, 'animate' ).name('animate').onChange( function ( value ) {
 					p.animate = value;
 				} );
-				gui.add( params, 'animperiod', 0, 10 ).name('animperiod').onChange( function ( value ) {
+				gui.add( params, 'animperiod', 0, 10 ).name('period').onChange( function ( value ) {
 					p.animperiod = value;
 				} );
 
@@ -156,7 +156,7 @@
 					p.checkers = Math.floor(value);
 					generateModels();
 				} );
-				gui.add( params, 'period', 1, 10 ).name('period').onChange( function ( value ) {
+				gui.add( params, 'period', 1, 10 ).name('wavelength').onChange( function ( value ) {
 					p.period = value;
 					generateModels();
 				} );
