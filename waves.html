@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>waves illusion</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+
+				background-color: #ffffff;
+				margin: 0px;
+				padding: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				position: absolute;
+				bottom: 0px; width: 100%;
+				padding: 5px;
+			}
+
+			a {
+				color: #0080ff;
+			}
+		</style>
+	</head>
+	<body>
+
+		<div id="info">Editable illusion based on <a href="http://bigblueboo.tumblr.com/post/81390584151/fooled-ya-brain" target="_blank" rel="noopener">"fooled ya brain" by Charlie Deck, BIGBLUEBOO</a>.<br><a href="https://github.com/erich666/illusions">Code</a>.</div>
+		</div>
+
+		<script src="js/three.min.js"></script>
+		<script src="js/controls/TrackballControls.js"></script>
+		<script src='js/libs/dat.gui.min.js'></script>
+
+		<script src="js/Detector.js"></script>
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var camera, scene, renderer, controls, gui, params;
+			
+			var p;
+
+			var windowHalfX = window.innerWidth / 2;
+			
+			var clock = new THREE.Clock();
+			var newTime, oldTime;
+			
+			var darkChecker, lightChecker, darkMtl, lightMtl;
+			
+			var alpha = 1.0;
+
+			init();
+			animate();
+
+			function init() {
+
+				if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.set( 0, 0, 540 );
+
+				setParams();
+				generateModels();
+				
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				// don't actually need z-buffer, nor sorting by depth (just transparency)
+				// turning these on can cause z-fighting
+				renderer.sortObjects = false;
+				renderer.context.depthFunc(renderer.context.ALWAYS);
+				document.body.appendChild( renderer.domElement );
+
+				controls = new THREE.TrackballControls( camera, renderer.domElement );
+				
+				addGui();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+			}
+			
+			function setParams() {
+				// program params
+				p = {
+					animate: true,
+					animperiod: 8,	// seconds
+					checkers: 12,
+					period: 3,
+					ratio: 1,
+					csize: 1.4/5,
+					proportion: 2/7,
+					endcaps: true,
+					circles: false
+				};
+
+				lightChecker = new THREE.MeshBasicMaterial( { color: 0xcecece, side: THREE.DoubleSide } );
+				darkChecker = new THREE.MeshBasicMaterial( { color: 0xb7b7b7, side: THREE.DoubleSide } );
+				
+				darkMtl = new THREE.MeshBasicMaterial( { color: 0xa9a9a9, opacity: alpha, transparent: true, side: THREE.DoubleSide } );
+				lightMtl = new THREE.MeshBasicMaterial( { color: 0xf9f9f9, opacity: alpha, transparent: true, side: THREE.DoubleSide } );
+				
+				// dat.gui params
+				params = {
+					reset: false,
+					animate: p.animate,
+					animperiod: p.animperiod,
+					dccolor: darkChecker.color.getHex(),
+					lccolor: lightChecker.color.getHex(),
+					checkers: p.checkers,
+					period: p.period,
+					ratio: p.ratio/p.period,
+					dxcolor: darkMtl.color.getHex(),
+					lxcolor: lightMtl.color.getHex(),
+					csize: p.csize,
+					proportion: p.proportion,
+					endcaps: p.endcaps,
+					circles: p.circles
+				};
+			}
+			
+			function addGui() {
+				gui = new dat.GUI();
+				
+				gui.close();
+
+				// TODO - is there an elegant way to use all params and refresh them?
+				//gui.add( params, 'reset' ).onChange( function ( value ) {
+				//	setParams();
+				//	generateModels();
+				//	params.reset = false;	// not sure... TODO
+				//} );
+
+				gui.addFolder( "Animation control" );
+				gui.add( params, 'animate' ).name('animate').onChange( function ( value ) {
+					p.animate = value;
+				} );
+				gui.add( params, 'animperiod', 0, 10 ).name('animperiod').onChange( function ( value ) {
+					p.animperiod = value;
+				} );
+
+				gui.addFolder( "Checker parameters" );
+				gui.addColor( params, 'dccolor' ).name('dark color').onChange( function ( value ) {
+					darkChecker.color = new THREE.Color( value );
+				} );
+				gui.addColor( params, 'lccolor' ).name('light color').onChange( function ( value ) {
+					lightChecker.color = new THREE.Color( value );
+				} );
+				gui.add( params, 'checkers', 1, 20 ).name('checkers').onChange( function ( value ) {
+					p.checkers = Math.floor(value);
+					generateModels();
+				} );
+				gui.add( params, 'period', 1, 10 ).name('period').onChange( function ( value ) {
+					p.period = value;
+					generateModels();
+				} );
+				gui.add( params, 'ratio', 0, 1 ).name('ratio').onChange( function ( value ) {
+					p.ratio = Math.round(value * p.period);
+					generateModels();
+				} );
+				
+				gui.addFolder( "Cross parameters" );
+				gui.addColor( params, 'dxcolor' ).name('dark color').onChange( function ( value ) {
+					darkMtl.color = new THREE.Color( value );
+				} );
+				gui.addColor( params, 'lxcolor' ).name('light color').onChange( function ( value ) {
+					lightMtl.color = new THREE.Color( value );
+				} );
+				gui.add( params, 'csize', 0, 1 ).name('scale').onChange( function ( value ) {
+					p.csize = value;
+					generateModels();
+				} );
+				gui.add( params, 'proportion', 0, 1 ).name('proportion').onChange( function ( value ) {
+					p.proportion = value;
+					generateModels();
+				} );
+				gui.add( params, 'endcaps' ).name('use endcaps').onChange( function ( value ) {
+					p.endcaps = value;
+					generateModels();
+				} );
+				gui.add( params, 'circles' ).name('just circles').onChange( function ( value ) {
+					p.circles = value;
+					generateModels();
+				} );
+			}
+			
+			function generateModels() {
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+				scene.add( camera );
+				var sqLength = 20*12/p.checkers;
+				var squareShape = new THREE.Shape();
+				squareShape.moveTo( -sqLength/2, -sqLength/2 );
+				squareShape.lineTo( -sqLength/2, sqLength/2 );
+				squareShape.lineTo( sqLength/2, sqLength/2 );
+				squareShape.lineTo( sqLength/2, -sqLength/2 );
+				squareShape.lineTo( -sqLength/2, -sqLength/2 );
+				
+				// checkerboard
+				var geometry = new THREE.ShapeBufferGeometry( squareShape );
+				
+				var mtl;
+
+				for ( x = 0; x < p.checkers; x++ ) {
+					for ( y = 0; y < p.checkers; y++ ) {
+						mtl = ( (x+y) % 2 == 0 ) ? lightChecker : darkChecker; // TODO messing with this 2 value is "interesting"
+						var mesh = new THREE.Mesh( geometry, mtl );
+					
+						mesh.position.set( (x-(p.checkers-1)/2)*sqLength, (y-(p.checkers-1)/2)*sqLength, 0 );
+
+						scene.add( mesh );
+					}
+				}
+				
+				// cross
+				var rectLength = p.csize*sqLength;
+				var rectHeight = p.csize*p.proportion*sqLength;
+				var crossShape = new THREE.Shape();
+				crossShape.moveTo( -rectHeight/2, -rectHeight/2 );
+				crossShape.lineTo( -rectLength/2, -rectHeight/2 );
+				crossShape.lineTo( -rectLength/2, rectHeight/2 );
+				crossShape.lineTo( -rectHeight/2, rectHeight/2 );
+				crossShape.lineTo( -rectHeight/2, rectLength/2 );
+				crossShape.lineTo( rectHeight/2, rectLength/2 );
+				crossShape.lineTo( rectHeight/2, rectHeight/2 );
+				crossShape.lineTo( rectLength/2, rectHeight/2 );
+				crossShape.lineTo( rectLength/2, -rectHeight/2 );
+				crossShape.lineTo( rectHeight/2, -rectHeight/2 );
+				crossShape.lineTo( rectHeight/2, -rectLength/2 );
+				crossShape.lineTo( -rectHeight/2, -rectLength/2 );
+
+				var crossGeometry = new THREE.ShapeBufferGeometry( crossShape );
+				
+				// endcaps
+				var endcapgeometry = new THREE.CircleGeometry( rectHeight/2, 32, 0, Math.PI );
+				var circlegeometry = new THREE.CircleGeometry( rectLength/2, 32 );
+				
+				for ( x = 0; x < p.checkers-1; x++ ) {
+					for ( y = 0; y < p.checkers-1; y++ ) {
+						var mtl = ( (300000+x-y) % p.period < p.ratio ) ? lightMtl : darkMtl;
+						
+						if ( p.circles ) {
+						
+							mesh = new THREE.Mesh( circlegeometry, mtl );
+						
+							mesh.position.set( (x-(p.checkers-2)/2)*sqLength, (y-(p.checkers-2)/2)*sqLength, 0 );
+							scene.add( mesh );
+						
+						} else {
+
+							mesh = new THREE.Mesh( crossGeometry, mtl );
+						
+							mesh.position.set( (x-(p.checkers-2)/2)*sqLength, (y-(p.checkers-2)/2)*sqLength, 0 );
+							scene.add( mesh );
+							
+							if ( p.endcaps ) {
+								for ( i = 0; i < 4; i++ ) {
+									mesh = new THREE.Mesh( endcapgeometry, mtl );
+								
+									var rotobj = new THREE.Object3D()
+									mesh.rotation.set( 0, 0, -Math.PI/2 );
+									mesh.position.set( rectLength/2, 0, 0 );
+									rotobj.rotation.set( 0, 0, i * 90 * Math.PI / 180 );
+									rotobj.position.set( (x-(p.checkers-2)/2)*sqLength, (y-(p.checkers-2)/2)*sqLength, 0 );
+									rotobj.add( mesh );
+									scene.add( rotobj );
+								}
+							}
+						}
+					}
+				}
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+				
+				controls.update();
+
+				render();
+
+			}
+
+			function render() {
+
+				// value from 0 to 1 for animation
+				var t = ( clock.getElapsedTime() / p.animperiod ) % 1;
+
+				alpha = p.animate ? Math.abs(Math.sin(t * Math.PI)) : 1;
+				darkMtl.opacity = lightMtl.opacity = alpha;
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+
+	</body>
+</html>
